@@ -1,0 +1,149 @@
+1.
+
+WITH FilteredTransakcija AS (
+    SELECT ID_v
+    FROM Transakcija_shalter
+    JOIN Smetka ON Transakcija_shalter.broj = Smetka.broj
+    WHERE valuta = 'EUR' AND tip = 'isplata' AND suma > 1000
+),
+MatchingVraboten AS (
+    SELECT DISTINCT Vraboten.ID, ime, prezime
+    FROM Vraboten
+    JOIN Shalterski_rabotnik ON Vraboten.ID = Shalterski_rabotnik.ID
+    WHERE Vraboten.ID IN (SELECT ID_v FROM FilteredTransakcija)
+)
+SELECT ime, prezime
+FROM MatchingVraboten
+ORDER BY ime, prezime;
+
+2.
+
+SELECT DISTINCT k.ime, k.prezime
+FROM Klient k
+INNER JOIN Smetka s ON k.MBR_k = s.MBR_k
+INNER JOIN Transakcija_bankomat t ON s.broj = t.broj
+WHERE s.valuta = 'USD' AND t.suma > 400
+ORDER BY k.ime;
+
+
+3.
+
+WITH Transakcija_Shalter_Filtered AS (
+    SELECT Smetka.broj
+    FROM Smetka
+    JOIN Transakcija_shalter ON Smetka.broj = Transakcija_shalter.broj
+    WHERE Smetka.valuta = 'MKD'
+      AND datum LIKE '2021-__-__'
+      AND tip = 'isplata'
+),
+Transakcija_Bankomat_Filtered AS (
+    SELECT Smetka.broj
+    FROM Smetka
+    JOIN Transakcija_bankomat ON Smetka.broj = Transakcija_bankomat.broj
+    WHERE Smetka.valuta = 'MKD'
+      AND datum LIKE '2021-__-__'
+),
+Intersected_Smetka AS (
+    SELECT broj
+    FROM Transakcija_Shalter_Filtered
+    INTERSECT
+    SELECT broj
+    FROM Transakcija_Bankomat_Filtered
+)
+SELECT Smetka.MBR_k, Smetka.broj, Smetka.valuta, Smetka.saldo
+FROM Smetka
+JOIN Transakcija_shalter ON Smetka.broj = Transakcija_shalter.broj
+WHERE Smetka.broj IN (
+    SELECT broj FROM Intersected_Smetka
+)
+ORDER BY Smetka.broj;
+
+
+4.
+
+WITH
+EUR_Smetki AS (
+    SELECT DISTINCT broj
+    FROM Smetka
+    WHERE valuta = 'EUR'
+),
+Smetki_Shafter AS (
+    SELECT DISTINCT Smetka.broj
+    FROM Smetka
+    JOIN Transakcija_shalter ON Smetka.broj = Transakcija_shalter.broj
+    WHERE valuta = 'EUR'
+),
+Smetki_Bankomat AS (
+    SELECT DISTINCT Smetka.broj
+    FROM Smetka
+    JOIN Transakcija_bankomat ON Smetka.broj = Transakcija_bankomat.broj
+    WHERE valuta = 'EUR'
+),
+Filtered_Smetki AS (
+    SELECT broj
+    FROM EUR_Smetki
+    EXCEPT
+    SELECT broj FROM Smetki_Shafter
+    INTERSECT
+    SELECT broj FROM Smetki_Bankomat
+)
+SELECT DISTINCT Smetka.MBR_k, ime, prezime, adresa, datum
+FROM Klient
+JOIN Smetka ON Klient.MBR_k = Smetka.MBR_k
+WHERE Smetka.broj IN (SELECT broj FROM Filtered_Smetki)
+ORDER BY ime, prezime;
+
+
+5.
+
+WITH Transakcija_Count AS (
+    SELECT 
+        Vraboten.ID AS vraboten,
+        Transakcija_shalter.datum,
+        COUNT(Transakcija_shalter.datum) AS broj_transakcii
+    FROM 
+        Vraboten
+    JOIN 
+        Transakcija_shalter 
+    ON 
+        Vraboten.ID = Transakcija_shalter.ID_v
+    GROUP BY 
+        Vraboten.ID, Transakcija_shalter.datum
+),
+Max_Transakcija AS (
+    SELECT 
+        vraboten, 
+        datum, 
+        MAX(broj_transakcii) AS broj_transakcii
+    FROM 
+        Transakcija_Count
+    GROUP BY 
+        vraboten, datum
+)
+SELECT * 
+FROM Max_Transakcija;
+
+
+6.
+
+SELECT 
+    s.MBR_k, 
+    s.broj, 
+    AVG(tb.suma) AS prosechna_isplata_bankomat, 
+    AVG(ts.suma) AS prosechna_isplata_shalter
+FROM 
+    Smetka s
+JOIN 
+    Transakcija_bankomat tb ON s.broj = tb.broj AND tb.datum LIKE '2021%'
+JOIN 
+    Transakcija_shalter ts ON s.broj = ts.broj AND ts.tip = 'isplata' AND ts.datum LIKE '2021%'
+WHERE 
+    s.valuta = 'EUR' OR s.valuta = 'USD'
+GROUP BY 
+    s.broj
+ORDER BY 
+    s.broj;
+
+
+
+
