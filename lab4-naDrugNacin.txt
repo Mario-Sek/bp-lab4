@@ -61,32 +61,14 @@ ORDER BY Klient.ime;
 
 5.
 
-WITH Transakcija_Count AS (
-    SELECT 
-        Vraboten.ID AS vraboten,
-        Transakcija_shalter.datum,
-        COUNT(Transakcija_shalter.datum) AS broj_transakcii
-    FROM 
-        Vraboten
-    JOIN 
-        Transakcija_shalter 
-    ON 
-        Vraboten.ID = Transakcija_shalter.ID_v
-    GROUP BY 
-        Vraboten.ID, Transakcija_shalter.datum
-),
-Max_Transakcija AS (
-    SELECT 
-        vraboten, 
-        datum, 
-        MAX(broj_transakcii) AS broj_transakcii
-    FROM 
-        Transakcija_Count
-    GROUP BY 
-        vraboten, datum
-)
-SELECT * 
-FROM Max_Transakcija;
+select Vraboten.ID, Transakcija_shalter.datum, count(*) 
+as broj_transakcii 
+from Vraboten join  Shalterski_rabotnik
+on Vraboten.ID = Shalterski_rabotnik.ID join 
+Transakcija_shalter on Shalterski_rabotnik.ID =
+Transakcija_shalter.ID_v
+group by Shalterski_rabotnik.ID, Transakcija_shalter.datum
+order by broj_transakcii desc
 
 
 6.
