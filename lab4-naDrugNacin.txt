@@ -46,37 +46,17 @@ where valuta='MKD' and datum like '2021-__-__'
 
 4.
 
-WITH
-EUR_Smetki AS (
-    SELECT DISTINCT broj
-    FROM Smetka
-    WHERE valuta = 'EUR'
-),
-Smetki_Shafter AS (
-    SELECT DISTINCT Smetka.broj
-    FROM Smetka
-    JOIN Transakcija_shalter ON Smetka.broj = Transakcija_shalter.broj
-    WHERE valuta = 'EUR'
-),
-Smetki_Bankomat AS (
-    SELECT DISTINCT Smetka.broj
-    FROM Smetka
-    JOIN Transakcija_bankomat ON Smetka.broj = Transakcija_bankomat.broj
-    WHERE valuta = 'EUR'
-),
-Filtered_Smetki AS (
-    SELECT broj
-    FROM EUR_Smetki
-    EXCEPT
-    SELECT broj FROM Smetki_Shafter
-    INTERSECT
-    SELECT broj FROM Smetki_Bankomat
-)
-SELECT DISTINCT Smetka.MBR_k, ime, prezime, adresa, datum
+SELECT Klient.MBR_k, Klient.ime, Klient.prezime, Klient.adresa, Klient.datum 
 FROM Klient
 JOIN Smetka ON Klient.MBR_k = Smetka.MBR_k
-WHERE Smetka.broj IN (SELECT broj FROM Filtered_Smetki)
-ORDER BY ime, prezime;
+JOIN Transakcija_bankomat ON Smetka.broj = Transakcija_bankomat.broj
+WHERE Smetka.valuta = 'EUR' AND Smetka.broj NOT IN (
+    SELECT Smetka.broj
+    FROM Smetka
+    JOIN Transakcija_shalter ON Smetka.broj = Transakcija_shalter.broj
+)
+ORDER BY Klient.ime;
+
 
 
 5.
