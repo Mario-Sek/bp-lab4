@@ -28,47 +28,87 @@ ORDER BY k.ime;
 
 3.
 
-select Smetka.MBR_k,Smetka.broj,valuta,saldo 
-from smetka 
-join 
-Transakcija_shalter on smetka.broj=Transakcija_shalter.broj
-where valuta='MKD' and datum like '2021-__-__' and tip='isplata'
+SELECT 
+    Smetka.MBR_k, 
+    Smetka.broj, 
+    valuta, 
+    saldo 
+FROM 
+    smetka 
+JOIN 
+    Transakcija_shalter 
+    ON smetka.broj = Transakcija_shalter.broj
+WHERE 
+    valuta = 'MKD' 
+    AND datum LIKE '2021-__-__' 
+    AND tip = 'isplata'
 
-intersect
+INTERSECT
 
-select Smetka.MBR_k,Smetka.broj,valuta,saldo 
-from smetka 
-join 
-Transakcija_bankomat on smetka.broj=Transakcija_bankomat.broj
-where valuta='MKD' and datum like '2021-__-__'
+SELECT 
+    Smetka.MBR_k, 
+    Smetka.broj, 
+    valuta, 
+    saldo 
+FROM 
+    smetka 
+JOIN 
+    Transakcija_bankomat 
+    ON smetka.broj = Transakcija_bankomat.broj
+WHERE 
+    valuta = 'MKD' 
+    AND datum LIKE '2021-__-__';
+
 
 
 
 4.
 
-SELECT Klient.MBR_k, Klient.ime, Klient.prezime, Klient.adresa, Klient.datum 
-FROM Klient
-JOIN Smetka ON Klient.MBR_k = Smetka.MBR_k
-JOIN Transakcija_bankomat ON Smetka.broj = Transakcija_bankomat.broj
-WHERE Smetka.valuta = 'EUR' AND Smetka.broj NOT IN (
-    SELECT Smetka.broj
-    FROM Smetka
-    JOIN Transakcija_shalter ON Smetka.broj = Transakcija_shalter.broj
-)
-ORDER BY Klient.ime;
+SELECT 
+    Klient.MBR_k, 
+    Klient.ime, 
+    Klient.prezime, 
+    Klient.adresa, 
+    Klient.datum 
+FROM 
+    Klient
+JOIN 
+    Smetka ON Klient.MBR_k = Smetka.MBR_k
+JOIN 
+    Transakcija_bankomat ON Smetka.broj = Transakcija_bankomat.broj
+WHERE 
+    Smetka.valuta = 'EUR' 
+    AND Smetka.broj NOT IN (
+        SELECT 
+            Smetka.broj
+        FROM 
+            Smetka
+        JOIN 
+            Transakcija_shalter ON Smetka.broj = Transakcija_shalter.broj
+    )
+ORDER BY 
+    Klient.ime;
+
 
 
 
 5.
 
-select Vraboten.ID, Transakcija_shalter.datum, count(*) 
-as broj_transakcii 
-from Vraboten join  Shalterski_rabotnik
-on Vraboten.ID = Shalterski_rabotnik.ID join 
-Transakcija_shalter on Shalterski_rabotnik.ID =
-Transakcija_shalter.ID_v
-group by Shalterski_rabotnik.ID, Transakcija_shalter.datum
-order by broj_transakcii desc
+SELECT 
+    Vraboten.ID, 
+    Transakcija_shalter.datum, 
+    COUNT(*) AS broj_transakcii 
+FROM 
+    Vraboten 
+JOIN 
+    Shalterski_rabotnik ON Vraboten.ID = Shalterski_rabotnik.ID 
+JOIN 
+    Transakcija_shalter ON Shalterski_rabotnik.ID = Transakcija_shalter.ID_v
+GROUP BY 
+    Shalterski_rabotnik.ID, Transakcija_shalter.datum
+ORDER BY 
+    broj_transakcii DESC;
+
 
 
 6.
