@@ -28,35 +28,20 @@ ORDER BY k.ime;
 
 3.
 
-WITH Transakcija_Shalter_Filtered AS (
-    SELECT Smetka.broj
-    FROM Smetka
-    JOIN Transakcija_shalter ON Smetka.broj = Transakcija_shalter.broj
-    WHERE Smetka.valuta = 'MKD'
-      AND datum LIKE '2021-__-__'
-      AND tip = 'isplata'
-),
-Transakcija_Bankomat_Filtered AS (
-    SELECT Smetka.broj
-    FROM Smetka
-    JOIN Transakcija_bankomat ON Smetka.broj = Transakcija_bankomat.broj
-    WHERE Smetka.valuta = 'MKD'
-      AND datum LIKE '2021-__-__'
-),
-Intersected_Smetka AS (
-    SELECT broj
-    FROM Transakcija_Shalter_Filtered
-    INTERSECT
-    SELECT broj
-    FROM Transakcija_Bankomat_Filtered
-)
-SELECT Smetka.MBR_k, Smetka.broj, Smetka.valuta, Smetka.saldo
-FROM Smetka
-JOIN Transakcija_shalter ON Smetka.broj = Transakcija_shalter.broj
-WHERE Smetka.broj IN (
-    SELECT broj FROM Intersected_Smetka
-)
-ORDER BY Smetka.broj;
+select Smetka.MBR_k,Smetka.broj,valuta,saldo 
+from smetka 
+join 
+Transakcija_shalter on smetka.broj=Transakcija_shalter.broj
+where valuta='MKD' and datum like '2021-__-__' and tip='isplata'
+
+intersect
+
+select Smetka.MBR_k,Smetka.broj,valuta,saldo 
+from smetka 
+join 
+Transakcija_bankomat on smetka.broj=Transakcija_bankomat.broj
+where valuta='MKD' and datum like '2021-__-__'
+
 
 
 4.
