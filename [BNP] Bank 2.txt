@@ -1,0 +1,152 @@
+/*
+Релационата база е дефинирана преку следните релации:
+Vraboten(ID, ime, prezime, datum_r, datum_v, obrazovanie, plata)
+Shalterski_rabotnik(ID*)
+Klient(MBR_k, ime, prezime, adresa, datum)
+Smetka(MBR_k*, broj, valuta, saldo)
+Transakcija_shalter(ID, ID_v*, MBR_k*, MBR_k_s*, broj*, datum, suma, tip)
+Bankomat(ID, lokacija, datum, zaliha)
+Transakcija_bankomat(ID, MBR_k_s*, broj*, ID_b*, datum, suma).
+
+1) Да се најдат имињата и презимињата на сите шалтерски работници кои
+имаат направено трансакција за исплата на средства во износ поголем од
+1000 EUR од сметка која работи со валута EUR, подредени според името
+на шалтерските работници.
+2) Да се најдат имињата и презимињата на сите клиенти кои имаат
+направено трансакција за исплата на средства преку банкомат во износ
+поголем од 400 USD од сметка која работи со валута USD, подредени
+според името на клиентите.
+3) Да се вратат сите сметки кои работат со валута MKD од кои е направена
+барем една трансакција за исплата преку шалтер и барем една
+трансакција за исплата преку банкомат во 2021 година, подредени
+според бројот на сметка.
+4) Да се вратат сите клиенти кои направиле барем една трансакција преку
+банкомат (за сметки кои работат со валута EUR), но не направиле ниту
+една трансакција преку шалтер од истата сметка, подредени според
+името на клиентот.
+5) За секој шалтерски работник да се врати неговата шифра, датумот и
+бројот на трансакции за датумот на кој има направено најголем број на
+трансакции, подредени според шифрата на шалтерски работник.
+6) За секоја сметка која работи со валута EUR да се вратат просечната
+направена сума oд трансакции за исплата преку шалтер во 2021 година и
+просечната направена сума од трансакции за исплата преку банкомат во
+2021 година, подредени според бројот на сметка.
+7) За секој шалтерски работник број на трансакции кои ги има направено на сметки кои учествувале само во шалтерска трансакција.
+8) Да се вратат податоци за шалтерските работници со завршени магистерски студии (MSc) и плата поголема од 50000 кои учествувале во трансакции направени за сметки за кои постојат и шалтерски и банкоматски трансакции. 
+*/
+1.
+SELECT DISTINCT ime,prezime
+FROM Vraboten JOIN Shalterski_rabotnik ON Vraboten.ID=Shalterski_rabotnik.ID JOIN Transakcija_shalter ON Vraboten.ID=Transakcija_shalter.ID_v JOIN Smetka ON Transakcija_shalter.broj=Smetka.broj
+WHERE valuta='EUR' AND tip='isplata' AND suma>1000
+ORDER BY ime,prezime
+
+2.
+SELECT DISTINCT ime,prezime
+FROM Klient JOIN Smetka ON Klient.MBR_k=Smetka.MBR_k JOIN Transakcija_bankomat ON Smetka.broj=Transakcija_bankomat.broj
+WHERE valuta='USD' AND suma>400
+ORDER BY ime
+
+3.
+SELECT Smetka.MBR_k,Smetka.broj,valuta,saldo
+FROM Smetka JOIN Transakcija_shalter ON Smetka.broj=Transakcija_shalter.broj
+WHERE Smetka.broj IN
+(SELECT Smetka.broj
+FROM Smetka JOIN Transakcija_shalter ON Smetka.broj=Transakcija_shalter.broj
+WHERE Smetka.valuta='MKD' AND datum LIKE '2021-__-__' AND tip='isplata'
+INTERSECT
+SELECT Smetka.broj
+FROM Smetka JOIN Transakcija_bankomat ON Smetka.broj=Transakcija_bankomat.broj
+WHERE Smetka.valuta='MKD' AND datum LIKE '2021-__-__'
+ORDER BY Smetka.broj)
+
+4.
+SELECT DISTINCT Smetka.MBR_k,ime,prezime,adresa,datum
+FROM Klient JOIN Smetka ON Klient.MBR_k=SMetka.MBR_k
+WHERE Smetka.broj IN (SELECT DISTINCT Smetka.broj FROM Smetka WHERE valuta='EUR'
+EXCEPT
+SELECT DISTINCT Smetka.broj
+FROM Smetka JOIN Transakcija_shalter ON Smetka.broj=Transakcija_shalter.broj 
+WHERE valuta='EUR'
+INTERSECT
+SELECT DISTINCT Smetka.broj
+FROM Smetka JOIN Transakcija_bankomat ON Smetka.broj=Transakcija_bankomat.broj 
+WHERE valuta='EUR')
+ORDER BY ime,prezime
+
+5.
+SELECT vraboten,datum,MAX(broj_transakcii) AS broj_transakcii
+FROM
+(SELECT Vraboten.ID AS vraboten,Transakcija_shalter.datum,COUNT(Transakcija_shalter.datum) AS broj_transakcii
+FROM Vraboten JOIN Transakcija_shalter ON Vraboten.ID=Transakcija_shalter.ID_v
+GROUP BY Vraboten.ID,Transakcija_shalter.datum)
+GROUP BY vraboten
+---------
+WITH al AS (
+    SELECT V.ID, TS.datum, COUNT(*) AS Transactions
+    FROM Vraboten V
+        JOIN Transakcija_shalter TS ON V.ID = TS.ID_v
+    GROUP BY V.ID, TS.datum
+    ORDER BY V.ID
+),
+al2 AS (
+      SELECT al.ID, MAX(Transactions) AS MT
+    FROM al
+    GROUP BY al.ID
+)
+SELECT A.ID AS vraboten, A.datum, A.Transactions AS broj_transakcii
+FROM(
+    al A
+      JOIN al2 B ON A.ID = B.ID AND A.Transactions = B.MT
+)
+
+6.
+SELECT COALESCE(broj1,broj2) AS broj,prosecna_suma_shalter,prosecna_suma_bankomat
+FROM
+(SELECT Smetka.broj AS broj1,AVG(suma) AS prosecna_suma_shalter
+FROM Smetka LEFT OUTER JOIN Transakcija_shalter ON Smetka.broj=Transakcija_shalter.broj AND Transakcija_shalter.datum LIKE '2021%'
+WHERE valuta='EUR' AND tip='isplata'
+GROUP BY Smetka.broj) 
+FULL OUTER JOIN
+(SELECT Smetka.broj AS broj2,AVG(suma) AS prosecna_suma_bankomat
+FROM Smetka LEFT OUTER JOIN Transakcija_bankomat ON Smetka.broj=Transakcija_bankomat.broj AND Transakcija_bankomat.datum LIKE '2021%'
+WHERE valuta='EUR'
+GROUP BY Smetka.broj)
+ON broj1=broj2
+ORDER BY broj
+------
+SELECT s.MBR_k,s.broj,AVG(tb.suma) AS prosechna_isplata_bankomat,avg(ts.suma) AS prosechna_isplata_shalter
+FROM Smetka s
+JOIN Transakcija_bankomat tb ON s.broj=tb.broj AND tb.datum LIKE '2021%'
+JOIN Transakcija_shalter ts ON s.broj=ts.broj AND ts.tip='isplata' AND ts.datum LIKE '2021%'
+WHERE s.valuta='EUR' or s.valuta='USD'
+GROUP BY s.broj
+ORDER BY s.broj
+
+7.
+SELECT Vraboten.ID,ime,prezime,COUNT(Transakcija_shalter.ID) AS br_transakcii
+FROM Vraboten JOIN Shalterski_rabotnik ON Vraboten.ID=Shalterski_rabotnik.ID JOIN Transakcija_shalter ON Shalterski_rabotnik.ID=Transakcija_shalter.ID_v JOIN Smetka ON Smetka.broj=Transakcija_shalter.broj
+WHERE Smetka.broj IN (SELECT Smetka.broj
+FROM Smetka JOIN Transakcija_shalter ON Smetka.MBR_k=Transakcija_shalter.MBR_k_s
+WHERE Smetka.broj NOT IN
+(SELECT Smetka.broj
+FROM Transakcija_bankomat JOIN Smetka ON Smetka.MBR_k=Transakcija_bankomat.MBR_k_s))
+GROUP BY Vraboten.ID
+
+8.
+SELECT DISTINCT ime,prezime
+FROM Vraboten JOIN Shalterski_rabotnik ON Vraboten.ID=Shalterski_rabotnik.ID JOIN Transakcija_shalter ON Shalterski_rabotnik.ID=Transakcija_shalter.ID_v JOIN Smetka ON Smetka.broj=Transakcija_shalter.broj
+WHERE Vraboten.obrazovanie='MSc' AND Vraboten.plata>50000 AND Smetka.broj IN 
+(SELECT Smetka.broj
+FROM Smetka JOIN Transakcija_shalter ON Smetka.MBR_k=Transakcija_shalter.MBR_k_s
+WHERE Smetka.broj IN
+(SELECT Smetka.broj
+FROM Transakcija_bankomat JOIN Smetka ON Smetka.MBR_k=Transakcija_bankomat.MBR_k_s))
+--------
+SELECT DISTINCT ime,prezime
+FROM Vraboten JOIN Shalterski_rabotnik ON Vraboten.ID=Shalterski_rabotnik.ID JOIN Transakcija_shalter ON Shalterski_rabotnik.ID=Transakcija_shalter.ID_v JOIN Smetka ON Smetka.broj=Transakcija_shalter.broj
+WHERE Vraboten.obrazovanie='MSc' AND Vraboten.plata>50000 AND Smetka.broj IN 
+(SELECT Smetka.broj
+FROM Smetka JOIN Transakcija_shalter ON Smetka.MBR_k=Transakcija_shalter.MBR_k_s
+INTERSECT
+SELECT Smetka.broj
+FROM Transakcija_bankomat JOIN Smetka ON Smetka.MBR_k=Transakcija_bankomat.MBR_k_s)
